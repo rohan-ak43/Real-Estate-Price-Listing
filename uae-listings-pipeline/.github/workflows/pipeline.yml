@@ -1,0 +1,21 @@
+name: pipeline
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"   # daily 02:00 UTC; in production this would pick up a fresh source extract
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12", cache: pip }
+      - run: pip install -r requirements.txt
+      - run: make test
+      - name: Incremental demo (batch 1, then batch 2) incl. data-quality gate
+        run: make demo
+      - uses: actions/upload-artifact@v4
+        with: { name: warehouse, path: data/warehouse.duckdb }

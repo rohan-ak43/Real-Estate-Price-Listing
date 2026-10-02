@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+data/warehouse.duckdb*
+data/inbox/*.csv
+logs/
+.pytest_cache/
