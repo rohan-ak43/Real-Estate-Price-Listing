@@ -13,6 +13,12 @@ RAW_COLUMNS = [
     "property_type", "purpose", "community", "city", "listed_date", "updated_at",
 ]
 
+# When the source has no listing id, one is hashed from every source column EXCEPT these.
+# Default () = all columns incl. price, so no distinct row is merged (the Bayut Kaggle CSV has
+# 41,381 fully distinct rows). Use ("price",) only if you want a changed price to update the same
+# listing - but beware: it merges distinct units that differ only by price (3,249 rows in that CSV).
+ID_EXCLUDE = ()
+
 # Source header (lower-case) -> canonical column. EDIT THIS when you plug in a real
 # dataset (e.g. a Kaggle Dubai listings CSV): map its headers to the names on the right.
 COLUMN_MAP = {

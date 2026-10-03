@@ -11,7 +11,7 @@ extracts go in, a tested star-schema warehouse and a dashboard come out.
 
 ```
  CSV drops            RAW (text, as received)      STAGING (typed, clean)        DW (star schema)          Consumers
- data/inbox/*.csv --> raw.listings_raw        -->  staging.listings         -->  dw.fact_listings     --> Streamlit dashboard
+ data/inbox/*.csv --> raw.listings_raw        -->  staging.listings         -->  dw.fact_listings     --> FastAPI + React dashboard
                       raw.ingest_log (sha256)      staging.rejected (+reason)    dw.dim_location
                                                                                  dw.dim_property_type
                                                    ops.pipeline_runs / ops.dq_results   dw.dim_date
@@ -25,7 +25,7 @@ Everything lives in one DuckDB file (`data/warehouse.duckdb`) with one schema pe
 | Ingest | `src/ingest.py` | Lands each new CSV untouched as text. Files are hashed, so re-running never double-loads. |
 | Clean | `src/clean.py` | Parses prices (`AED 1,250,000`, `1.25M`, `850k`), areas (`sqft`/`sqm`/`m²` -> sqft), bedrooms (`Studio`), dates (3 formats), normalises types/cities/communities, **rejects** bad rows with a reason, dedupes keeping the latest `updated_at`. |
 | Load | `src/warehouse.py` | Incremental upsert into the star schema (see below). |
-| Check | `src/quality.py` | 8 automated checks; error-level failures roll the load back. |
+| Check | `src/quality.py` | 10 automated checks; error-level failures roll the load back. |
 | Orchestrate | `src/pipeline.py` | Runs the above per batch, records every run and check result in `ops`. |
 
 ## Warehouse model
@@ -49,7 +49,7 @@ DDL: [`sql/schema.sql`](sql/schema.sql).
 - Bad rows are never silently dropped: `staging.rejected` keeps them with a reason (`missing_location`, `invalid_price`, ...).
 - Checks (`src/quality.py`): row-count reconciliation raw = staged + rejected + dups, no non-positive prices, no null locations, unique listing ids, referential integrity, fact count equals distinct staged ids (proves the incremental load), plausible price/sqft (warn), reject rate < 10% (warn).
 - **Write-audit-publish**: the warehouse load and the checks run inside one transaction. An error-level failure rolls it back, so bad data never reaches the dashboard; the batch is retried on the next run. Pipeline exits non-zero, so cron/CI alerting works.
-- 22 tests (`make test`): parser unit tests, end-to-end incremental test, idempotent re-run, and a test that a failed check really rolls back.
+- 26 tests (`make test`): parser unit tests, end-to-end incremental test, idempotent re-run, and a test that a failed check really rolls back.
 
 ## Run it (Linux)
 
@@ -58,7 +58,8 @@ git clone <this repo> && cd uae-listings-pipeline
 make setup && source .venv/bin/activate     # Python 3.10+
 make demo                                   # reset, generate batch 1, run, generate batch 2, run
 make test
-make dashboard                              # http://localhost:8501
+make api                                    # terminal 1: FastAPI on http://localhost:8000
+make frontend                               # terminal 2: React dashboard on http://localhost:5173
 ```
 
 Step by step: `make data` -> `make run` (full load), `make data2` -> `make run` (only the delta: new listings,
@@ -80,7 +81,19 @@ GitHub Actions: [`.github/workflows/pipeline.yml`](.github/workflows/pipeline.ym
 
 ## Using real data
 
-1. Download a UAE/Dubai listings CSV (e.g. from Kaggle) into `data/inbox/`.
+The repo includes `data/bayut_selling_properties.csv` (Kaggle, Bayut for-sale listings). Copy it into `data/inbox/` and run
+`python -m src.pipeline`. It has no id column, so `ingest.read_source` derives a stable `listing_id` by hashing every source
+column (all 41,381 rows are distinct, so none are merged; 16 zero-price rows are rejected). Limitation: with no real id a changed
+price looks like a new listing, so price history needs a source with an id (see `ID_EXCLUDE` in `src/config.py`).
+
+### Verifying it is correct
+
+`python scripts/verify.py` recomputes expected counts, medians and per-row signatures from the CSV with plain pandas and compares
+them to the warehouse (and to the API if `make api` is running).
+
+For another CSV:
+
+1. Put it in `data/inbox/`.
 2. In `src/config.py`, extend `COLUMN_MAP` so its headers map to the canonical names
    (`listing_id, title, price, area, bedrooms, bathrooms, property_type, purpose, community, city, listed_date, updated_at`).
    Missing columns are filled empty; if there is no id/purpose column, derive them in `ingest.read_source`.

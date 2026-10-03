@@ -87,7 +87,10 @@ def norm_community(x):
     if s is None:
         return None
     s = re.sub(r"\s+", " ", s).strip()
-    return COMMUNITY_ALIASES.get(s.lower(), s.title())
+    if s.lower() in COMMUNITY_ALIASES:
+        return COMMUNITY_ALIASES[s.lower()]
+    # keep source casing when it is already mixed ("Jumeirah Village Circle (JVC)"); fix only ALL-CAPS/lowercase
+    return s if (s != s.lower() and s != s.upper()) else s.title()
 
 
 DATE_FORMATS = ["%Y-%m-%d", "%d/%m/%Y", "%b %d, %Y", "%d-%m-%Y", "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S"]

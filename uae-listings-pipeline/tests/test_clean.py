@@ -57,3 +57,9 @@ def test_clean_batch_rejects_dedupes_and_keeps_latest():
     assert clean.loc[0, "price_aed"] == 1_100_000 and clean.loc[0, "purpose"] == "Sale"
     assert set(rejected["reject_reason"]) == {"missing_location", "invalid_price", "invalid_purpose"}
     assert stats["rows_staged"] + stats["rows_rejected"] + stats["rows_dup_removed"] == stats["rows_raw"]
+
+
+def test_community_casing_is_preserved_when_mixed():
+    assert norm_community("Jumeirah Village Circle (JVC)") == "Jumeirah Village Circle (JVC)"
+    assert norm_community("DAMAC Hills") == "DAMAC Hills"
+    assert norm_community("DUBAI MARINA") == "Dubai Marina" and norm_community("business bay") == "Business Bay"

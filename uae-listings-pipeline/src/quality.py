@@ -50,6 +50,13 @@ def run_checks(con, batch_id: int, stats: dict) -> list[Check]:
     pct = 100 * bad / max(fact, 1)
     add("price_per_sqft_plausible", "warn", pct <= 1.0, f"{bad} rows ({pct:.2f}%) outside plausible range")
 
+    cities = con.execute("""SELECT l.city, count(*) FROM dw.fact_listings f JOIN dw.dim_location l USING (location_key)
+                            WHERE l.city NOT IN ('Dubai', 'Abu Dhabi', 'Sharjah', 'Ajman', 'Ras Al Khaimah',
+                                                 'Umm Al Quwain', 'Fujairah', 'Al Ain', 'Unknown')
+                            GROUP BY 1 ORDER BY 2 DESC""").fetchall()
+    add("city_is_a_known_uae_city", "warn", not cities,
+        "unexpected cities: " + ", ".join(f"{c} ({n})" for c, n in cities) if cities else "all cities recognised")
+
     rate = 100 * stats["rows_rejected"] / max(stats["rows_raw"], 1)
     add("reject_rate_below_10pct", "warn", rate <= 10, f"{rate:.1f}% of raw rows rejected")
     add("reject_rate_below_50pct", "error", rate <= 50,

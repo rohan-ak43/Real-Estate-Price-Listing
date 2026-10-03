@@ -4,21 +4,17 @@ from pathlib import Path
 
 import pandas as pd
 
-from .config import COLUMN_MAP, INBOX, RAW_COLUMNS
+from .config import COLUMN_MAP, ID_EXCLUDE, INBOX, RAW_COLUMNS
 
 
 def _sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
-# Fields that identify "the same listing" across extracts when the source has no id column.
-# Price is deliberately excluded so a price change updates the listing instead of creating a new one.
-ID_FIELDS = ["address", "property_type", "bedrooms", "bathrooms", "furnishing", "completion_status", "listed_date"]
-
-
-def derive_listing_id(df: pd.DataFrame) -> pd.Series:
-    fields = [c for c in ID_FIELDS if c in df.columns]
-    key = df[fields].astype(str).apply(lambda r: "|".join(v.strip().lower() for v in r), axis=1)
+def derive_listing_id(df: pd.DataFrame, exclude=ID_EXCLUDE) -> pd.Series:
+    """Stable id for sources without one: hash of every source column except `exclude`."""
+    cols = [c for c in df.columns if c != "listing_id" and c not in exclude]
+    key = df[cols].astype(str).apply(lambda r: "|".join(v.strip().lower() for v in r), axis=1)
     return key.map(lambda k: "DRV-" + hashlib.md5(k.encode()).hexdigest()[:16])
 
 
@@ -28,7 +24,7 @@ def read_source(path: Path) -> pd.DataFrame:
     df.columns = [COLUMN_MAP.get(c.strip().lower(), c.strip().lower()) for c in df.columns]
     df = df.loc[:, ~df.columns.duplicated()]
     no_id = "listing_id" not in df.columns or (df["listing_id"].str.strip() == "").all()
-    if no_id and any(c in df.columns for c in ID_FIELDS):
+    if no_id:
         df["listing_id"] = derive_listing_id(df)
     for col in RAW_COLUMNS:
         if col not in df.columns:
