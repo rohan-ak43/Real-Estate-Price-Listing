@@ -53,3 +53,11 @@ def test_failed_quality_check_rolls_back(tmp_path, monkeypatch):
     assert con.execute("SELECT status FROM ops.pipeline_runs").fetchone()[0] == "failed_dq"
     assert con.execute("SELECT count(*) FROM ops.dq_results WHERE NOT passed AND check_name = 'no_non_positive_prices'").fetchone()[0] == 1
     con.close()
+
+
+def test_unmappable_file_fails_instead_of_loading_nothing(tmp_path):
+    inbox, db = tmp_path / "inbox", tmp_path / "wh.duckdb"
+    inbox.mkdir()
+    (inbox / "bad.csv").write_text("foo,bar\n1,2\n3,4\n")
+    assert pipeline.run(db, inbox) is False
+    assert _fact_count(db) == 0
