@@ -24,6 +24,7 @@ COLUMN_MAP = {
     "baths": "bathrooms", "no_of_bathrooms": "bathrooms",
     "type": "property_type", "category": "property_type",
     "neighborhood": "community", "neighbourhood": "community", "location": "community",
-    "date": "listed_date", "posted_date": "listed_date", "added_on": "listed_date",
+    "date": "listed_date", "posted_date": "listed_date", "added_on": "listed_date", "post_date": "listed_date",
+    "area_name": "community",
     "last_updated": "updated_at",
 }

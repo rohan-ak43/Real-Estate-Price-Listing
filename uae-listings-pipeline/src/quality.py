@@ -52,6 +52,8 @@ def run_checks(con, batch_id: int, stats: dict) -> list[Check]:
 
     rate = 100 * stats["rows_rejected"] / max(stats["rows_raw"], 1)
     add("reject_rate_below_10pct", "warn", rate <= 10, f"{rate:.1f}% of raw rows rejected")
+    add("reject_rate_below_50pct", "error", rate <= 50,
+        f"{rate:.1f}% of raw rows rejected (likely a column-mapping problem; see COLUMN_MAP in src/config.py)")
     return out
 
 
