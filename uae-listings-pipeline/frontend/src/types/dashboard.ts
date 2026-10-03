@@ -12,13 +12,13 @@ export interface MarketOptions {
 export interface MarketSummary {
   listings: number;
   medianPrice: number | null;
-  averagePricePerSqft: number | null;
+  averagePrice: number | null;
   communities: number;
 }
 
 export interface CommunityPrice {
   community: string;
-  avg_price_per_sqft: number;
+  median_price: number;
 }
 
 export interface PropertyTypeCount {
@@ -28,7 +28,7 @@ export interface PropertyTypeCount {
 
 export interface PriceTrend {
   year_month: string;
-  avg_price_per_sqft: number;
+  median_price: number;
 }
 
 export interface PriceChange {

@@ -1,7 +1,6 @@
 """FastAPI backend for the UAE Property Listings dashboard.
 
-Serves the same data as the Streamlit dashboard via REST endpoints.
-All SQL queries are preserved verbatim from dashboard/app.py.
+Serves the warehouse to the React frontend via read-only REST endpoints.
 """
 
 import hashlib
@@ -30,7 +29,7 @@ app.add_middleware(
 )
 
 # ---------------------------------------------------------------------------
-# Simple in-memory cache (TTL = 60 s), mirrors Streamlit's @st.cache_data(ttl=60)
+# Simple in-memory cache (TTL = 60 s), keeps repeated dashboard requests cheap
 # ---------------------------------------------------------------------------
 _cache: dict[str, tuple[float, Any]] = {}
 CACHE_TTL = 60
@@ -94,24 +93,24 @@ def market_summary(
     cities: list[str] = Query(...),
     propertyTypes: list[str] = Query(..., alias="propertyTypes"),
 ):
-    """KPI cards — same query as the Streamlit dashboard."""
+    """KPI cards."""
     if not DB_PATH.exists():
         return JSONResponse(status_code=503, content={"error": "Warehouse not found."})
     where = "purpose = ? AND list_contains(?, city) AND list_contains(?, property_type)"
     sql = f"""
         SELECT count(*) AS n,
                median(price_aed) AS med_price,
-               avg(price_per_sqft) AS ppsf,
+               avg(price_aed) AS avg_price,
                count(DISTINCT community) AS areas
         FROM dw.v_listings
         WHERE {where}
     """
     rows = _query(sql, (purpose, cities, propertyTypes))
-    r = rows[0] if rows else {"n": 0, "med_price": None, "ppsf": None, "areas": 0}
+    r = rows[0] if rows else {"n": 0, "med_price": None, "avg_price": None, "areas": 0}
     return {
         "listings": int(r["n"]),
         "medianPrice": r["med_price"],
-        "averagePricePerSqft": r["ppsf"],
+        "averagePrice": r["avg_price"],
         "communities": int(r["areas"]),
     }
 
@@ -122,16 +121,17 @@ def community_prices(
     cities: list[str] = Query(...),
     propertyTypes: list[str] = Query(..., alias="propertyTypes"),
 ):
-    """Average price per sqft by community — horizontal bar chart data."""
+    """Median price by community — horizontal bar chart data."""
     if not DB_PATH.exists():
         return JSONResponse(status_code=503, content={"error": "Warehouse not found."})
     where = "purpose = ? AND list_contains(?, city) AND list_contains(?, property_type)"
     sql = f"""
         SELECT community,
-               round(avg(price_per_sqft)) AS avg_price_per_sqft
+               round(median(price_aed)) AS median_price
         FROM dw.v_listings
         WHERE {where}
         GROUP BY 1
+        HAVING count(*) >= 20
         ORDER BY 2 DESC
     """
     return _query(sql, (purpose, cities, propertyTypes))
@@ -164,16 +164,17 @@ def price_trend(
     cities: list[str] = Query(...),
     propertyTypes: list[str] = Query(..., alias="propertyTypes"),
 ):
-    """Price per sqft trend by month — line chart data."""
+    """Median price trend by month listed — line chart data."""
     if not DB_PATH.exists():
         return JSONResponse(status_code=503, content={"error": "Warehouse not found."})
     where = "purpose = ? AND list_contains(?, city) AND list_contains(?, property_type)"
     sql = f"""
         SELECT year_month,
-               round(avg(price_per_sqft)) AS avg_price_per_sqft
+               round(median(price_aed)) AS median_price
         FROM dw.v_listings
         WHERE {where}
         GROUP BY 1
+        HAVING count(*) >= 20
         ORDER BY 1
     """
     return _query(sql, (purpose, cities, propertyTypes))
@@ -181,7 +182,7 @@ def price_trend(
 
 @app.get("/api/market/price-changes")
 def price_changes():
-    """Biggest recent price changes — table data.  Not filtered (matches Streamlit behaviour)."""
+    """Biggest recent price changes — table data.  Not filtered."""
     if not DB_PATH.exists():
         return JSONResponse(status_code=503, content={"error": "Warehouse not found."})
     sql = """

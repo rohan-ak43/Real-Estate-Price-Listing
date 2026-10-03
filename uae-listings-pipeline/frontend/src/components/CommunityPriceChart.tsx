@@ -17,7 +17,7 @@ export default function CommunityPriceChart({ data }: Props) {
 
   return (
     <div className="chart-panel">
-      <h3>Average price per sqft by community</h3>
+      <h3>Median price by community (min. 20 listings)</h3>
       <ResponsiveContainer width="100%" height={Math.max(280, sliced.length * 28)}>
         <BarChart data={sliced} layout="vertical" margin={{ left: 10, right: 30, top: 5, bottom: 5 }}>
           <XAxis type="number" tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={(v: number) => v.toLocaleString()} />
@@ -31,9 +31,9 @@ export default function CommunityPriceChart({ data }: Props) {
           <Tooltip
             contentStyle={{ background: '#1c2333', border: '1px solid #2d3748', borderRadius: 8, fontSize: 13 }}
             labelStyle={{ color: '#e2e8f0', fontWeight: 600 }}
-            formatter={(value) => [`AED ${Number(value ?? 0).toLocaleString()}`, 'Avg AED/sqft']}
+            formatter={(value) => [`AED ${Number(value ?? 0).toLocaleString()}`, 'Median price']}
           />
-          <Bar dataKey="avg_price_per_sqft" radius={[0, 4, 4, 0]}>
+          <Bar dataKey="median_price" radius={[0, 4, 4, 0]}>
             {sliced.map((_, i) => (
               <Cell key={i} fill={BAR_COLOR} fillOpacity={1 - i * 0.02} />
             ))}

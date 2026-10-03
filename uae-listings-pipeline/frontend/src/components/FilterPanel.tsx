@@ -62,7 +62,7 @@ export default function FilterPanel({
         onChange={onPropertyTypesChange}
       />
 
-      <p className="filter-note">Price per sqft is AED per sqft (annual rent for Rent).</p>
+      <p className="filter-note">Prices are in AED. Charts show medians; groups with fewer than 20 listings are hidden.</p>
     </div>
   );
 }

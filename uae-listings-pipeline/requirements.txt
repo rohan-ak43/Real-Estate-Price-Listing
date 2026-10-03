@@ -1,5 +1,6 @@
 duckdb>=1.0
 pandas>=2.0
 numpy>=1.26
-streamlit>=1.50
+fastapi>=0.115
+uvicorn>=0.30
 pytest>=8.0

@@ -141,7 +141,7 @@ export default function Market() {
         <div className="kpi-row">
           <KPICard label="Listings" value={summary ? summary.listings.toLocaleString() : '-'} />
           <KPICard label="Median price (AED)" value={fmtKpi(summary?.medianPrice ?? null, 'AED ')} />
-          <KPICard label="Avg AED / sqft" value={fmtKpi(summary?.averagePricePerSqft ?? null)} />
+          <KPICard label="Average price (AED)" value={fmtKpi(summary?.averagePrice ?? null, 'AED ')} />
           <KPICard label="Communities" value={summary ? summary.communities.toLocaleString() : '-'} />
         </div>
       )}
